@@ -15,9 +15,9 @@ import cv2
 import numpy as np
 import imutils
 
-FROM_EMAIL = 'f6866666@gmail.com'
-FROM_PASSWORD = 'callktgjyogxqbwl'
-TO_EMAIL = 'alexis01valentino@gmail.com'
+FROM_EMAIL = '' # Enter your email
+FROM_PASSWORD = '' # Enter your generated app password
+TO_EMAIL = '' # Enter the recepients email
 
 gun_cascade = cv2.CascadeClassifier('cascade.xml')
 camera = cv2.VideoCapture(0)
