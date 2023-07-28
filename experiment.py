@@ -20,7 +20,7 @@ FROM_EMAIL = 'f6866666@gmail.com'
 FROM_PASSWORD = 'callktgjyogxqbwl'
 TO_EMAIL = 'alexis01valentino@gmail.com'
 
-face_cascade = cv2.CascadeClassifier('C:/Users/ACER/Desktop/Real time threat detection/haarcascade_frontalface_default.xml')
+face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 gun_cascade = cv2.CascadeClassifier('cascade.xml')
 camera = cv2.VideoCapture(0)
 
@@ -36,7 +36,7 @@ alarm_sound = pygame.mixer.Sound('alarm.wav')
 gun_detection_counter = 0
 loud_sound_counter = 0
 
-samplerate = sd.query_devices('Microphone (Realtek High Definition Audio), Windows DirectSound')['default_samplerate']
+samplerate = sd.query_devices('Microphone (Photry PC230A QHD Webcam), Windows DirectSound')['default_samplerate']
 duration = 3  # seconds
 device = sd.default.device
 

@@ -30,7 +30,7 @@ alarm_sound = pygame.mixer.Sound('alarm.wav')
 gun_detection_counter = 0
 loud_sound_counter = 0
 
-samplerate = sd.query_devices('Microphone (Realtek High Definition Audio), Windows DirectSound')['default_samplerate']
+samplerate = sd.query_devices('Microphone (Photry PC230A QHD Webcam), Windows DirectSound')['default_samplerate']
 duration = 3  # seconds
 device = sd.default.device
 
@@ -81,7 +81,7 @@ def loud_sound_detection_thread():
     global loud_sound_counter
     global alarm_sound
     global alarm_active
-    rms_threshold = 0.1  # Set the threshold for RMS
+    rms_threshold = 0.2  # Set the threshold for RMS
     device = sd.default.device  # Get the default input/output device
 
     while True:
