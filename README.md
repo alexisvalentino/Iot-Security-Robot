@@ -1,2 +1,1 @@
-# Real-Time Threat Detection System with Face Recognition, Firearm Detection, and Audio Analysis.
-The system is set up to detect threats in real-time and react accordingly by sending email notifications and triggering an alarm sound.
+# Real-time threat detection system that continuously processes camera frames, detects guns, loud sounds, and unknown faces, and sends alert emails with relevant images and audio recordings when any threat is detected. It does this by utilizing the power of threading to run multiple tasks concurrently, making it a comprehensive and efficient solution for threat detection and alerting.
