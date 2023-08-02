@@ -15,12 +15,13 @@ import smtplib
 import cv2
 import numpy as np
 import imutils
+import socket
 
 FROM_EMAIL = 'f6866666@gmail.com'
-FROM_PASSWORD = 'callktgjyogxqbwl'
+FROM_PASSWORD = 'usuvbflcqnrdazqa'
 TO_EMAIL = 'alexis01valentino@gmail.com'
 
-face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+face_cascade = cv2.CascadeClassifier('C:/Users/ACER/Desktop/Real time threat detection/haarcascade_frontalface_default.xml')
 gun_cascade = cv2.CascadeClassifier('cascade.xml')
 camera = cv2.VideoCapture(0)
 
@@ -36,7 +37,7 @@ alarm_sound = pygame.mixer.Sound('alarm.wav')
 gun_detection_counter = 0
 loud_sound_counter = 0
 
-samplerate = sd.query_devices('Microphone (Photry PC230A QHD Webcam), Windows DirectSound')['default_samplerate']
+samplerate = sd.query_devices('Microphone (Realtek High Definition Audio), Windows DirectSound')['default_samplerate']
 duration = 3  # seconds
 device = sd.default.device
 
@@ -250,12 +251,19 @@ def email_sending_thread():
             msg['From'] = FROM_EMAIL
             msg['To'] = TO_EMAIL
             msg['Subject'] = 'Threat Detected'
-            text = MIMEText("Threat detected at " + datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S %p"))
+
+            # Get the device's public IP address using the socket library
+            public_ip = socket.gethostbyname(socket.gethostname())
+            location_info = f"Location: {public_ip}"
+
+            text = MIMEText("Threat detected at " + datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S %p") + "\n" + location_info)
             msg.attach(text)
+
             with open(screenshot, 'rb') as f:
                 img = MIMEImage(f.read())
             img.add_header('Content-Disposition', 'attachment', filename="screenshot.jpg")
             msg.attach(img)
+
             with open(filename, 'rb') as f:
                 audio = MIMEAudio(f.read())
             audio.add_header('Content-Disposition', 'attachment', filename="recording.wav")
@@ -302,7 +310,8 @@ t2 = threading.Thread(target=loud_sound_detection_thread)
 t3 = threading.Thread(target=email_sending_thread)
 t4 = threading.Thread(target=face_recognition_thread)
 t5 = threading.Thread(target=alarm_thread)
-t6 = threading.Thread(target=detect_faces_opencv)
+t6 = threading.Thread(target=detect_faces_opencv, args=(camera,))
+
 
 t1.start()
 t2.start()
@@ -316,6 +325,10 @@ t6.start()
 while True:
     ret, frame = camera.read()
 
+    if not ret:  # Check if the camera frame is valid
+        print("Error: Failed to read camera frame")
+        break
+    
     frame = imutils.resize(frame, width=500)
 
     if firstFrame is None:
