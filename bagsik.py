@@ -4,7 +4,7 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from email.mime.audio import MIMEAudio
 from opencage.geocoder import OpenCageGeocode
-from twilio.rest import Client
+from ublox.ublox import UBlox
 import datetime
 import pygame
 import os
@@ -19,30 +19,38 @@ import numpy as np
 import imutils
 import socket
 import geocoder
+import telegram
 
 FROM_EMAIL = 'f6866666@gmail.com'
 FROM_PASSWORD = 'gwlyhghawjphuwtv'
 TO_EMAIL = 'alexis01valentino@gmail.com'
 
-TWILIO_ACCOUNT_SID = 'your_twilio_account_sid'
-TWILIO_AUTH_TOKEN = 'your_twilio_auth_token'
-TWILIO_PHONE_NUMBER = 'your_twilio_phone_number'
-RECIPIENT_PHONE_NUMBER = 'recipient_phone_number'
+TELEGRAM_BOT_TOKEN = 'YOUR_BOT_TOKEN'
+RECIPIENT_CHAT_ID = 'RECIPIENT_CHAT_ID' 
+
+# Initialize the Telegram bot
+bot = telegram.Bot(token=TELEGRAM_BOT_TOKEN)
 
 face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
-gun_cascade = cv2.CascadeClassifier('cascade.xml')
+gunknife_cascade = cv2.CascadeClassifier('cascade.xml')
 camera = cv2.VideoCapture(0)
+
+gps = UBlox("/dev/ttyACM0")  # Replace with the actual device path of your GPS module
+
+# Configure the GPS module
+gps.configure_solution_rate(rate_ms=1000)  # Update rate of 1 second
+gps.configure_message_rate(class_id=0x01, msg_id=0x02, rate=1)  # GGA message at 1 Hz
 
 OPENCAGE_API_KEY = 'e4d21fe225704779a60d81989b3285b2'
 firstFrame = None
-gun_exist = False
+gunknife_exist = False
 alarm_active = False
 unknown_face_detected = False
 unknown_face_image = None
 
 pygame.init()
 alarm_sound = pygame.mixer.Sound('alarm.wav')
-gun_detection_counter = 0
+gunknife_detection_counter = 0
 loud_sound_counter = 0
 device_info = sd.query_devices(device=2)
 samplerate = device_info['default_samplerate']
@@ -63,11 +71,11 @@ if os.path.exists(KNOWN_FACES_PICKLE):
     known_face_encodings = [np.array(encoding) for encoding in known_face_encodings for encoding in known_face_encodings]
 
 # Gun detection
-def gun_detection_thread():
-    global gun_exist
+def gunknife_detection_thread():
+    global gunknife_exist
     global frame
-    global gun_detection_counter
-    gun_alarm_time = None
+    global gunknife_detection_counter
+    gunknife_alarm_time = None
     while True:
         if frame is not None:
 
@@ -75,31 +83,32 @@ def gun_detection_thread():
             resized_frame = cv2.resize(frame, (500, 500))
             gray = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2GRAY)
 
-            # Detect guns in the frame using the cascade classifier
-            guns = gun_cascade.detectMultiScale(gray, 1.3, 5, minSize=(100, 100))
+            # Detect guns and knife in the frame using the cascade classifier
+            gunknife = gunknife_cascade.detectMultiScale(gray, 1.3, 5, minSize=(100, 100))
 
-            # Set the gun_exist flag if guns are detected
-            if len(guns) > 0:
-                gun_exist = True
-                gun_detection_counter += 1
-                if gun_alarm_time is None or time.time() - gun_alarm_time >= 3:
+            # Set the gunknife_exist flag if guns are detected
+            if len(gunknife) > 0:
+                gunknife_exist = True
+                gunknife_detection_counter += 1
+                if gunknife_alarm_time is None or time.time() - gunknife_alarm_time >= 3:
 
-                    # Alarm if gun detected for the first time or after 3 seconds
-                    print("Gun detected!")
+                    # Alarm if gunknife detected for the first time or after 3 seconds
+                    print("Gun/Knife detected!")
+                    send_telegram_threat_alert("Gun/Knife detected")
                     for i in range(5):
 
                         # Continuously alarm for at least 5 seconds
                         print("ALARM!")
                         time.sleep(1)
-                    gun_alarm_time = time.time()
+                    gunknife_alarm_time = time.time()
 
             else:
-                gun_exist = False
-                gun_detection_counter = 0
-                gun_alarm_time = None
+                gunknife_exist = False
+                gunknife_detection_counter = 0
+                gunknife_alarm_time = None
 
-            # Draw a blue rectangle around each detected gun
-            for (x, y, w, h) in guns:
+            # Draw a blue rectangle around each detected gun and knife
+            for (x, y, w, h) in gunknife:
                 frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
                 roi_gray = gray[y:y + h, x:x + w]
                 roi_color = frame[y:y + h, x:x + w]
@@ -123,6 +132,7 @@ def loud_sound_detection_thread():
         # Check if sound is loud enough and not the alarm sound
         if rms_value > rms_threshold and not alarm_active:
             print("loud sound detected")
+            send_telegram_threat_alert("Loud sound detected")
             loud_sound_counter += 1
         else:
             loud_sound_counter = 0
@@ -201,6 +211,7 @@ def face_recognition_thread():
                 if "Unknown" in best_match_names:
                     if not alarm_triggered:  # Check if the alarm has not been triggered before
                         print('unknown face detected')
+                        send_telegram_threat_alert("Unknown face detected")
                         unknown_face_detected = True
                         unknown_face_image = frame.copy()
 
@@ -232,32 +243,31 @@ def alarm_thread():
             unknown_face_detected = False
         time.sleep(0.1)
 
-#sms
-def send_sms(message):
-    client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-    message = client.messages.create(
-        body=message,
-        from_=TWILIO_PHONE_NUMBER,
-        to=RECIPIENT_PHONE_NUMBER
-    )
-    return message.sid
+# Send a threat detection alert using the Telegram bot
+def send_telegram_threat_alert(threat_type):
+    message = f"Threat detected: {threat_type}"
+    try:
+        bot.send_message(chat_id=RECIPIENT_CHAT_ID, text=message)
+        print("Telegram threat alert sent successfully")
+    except Exception as e:
+        print("Error sending Telegram threat alert:", str(e))
 
-def sms_alert_thread():
+def start_gps_thread():
     while True:
-        # Check for conditions that require SMS alerts
-        if gun_detection_counter == 1 or loud_sound_counter == 1 or unknown_face_detected:
-            sms_message = "Threat detected - SMS alert."
-            send_sms(sms_message)
-        time.sleep(0.1)
+        gps_data = gps.poll("NAV", "PVT")
+        latitude = gps_data["LAT"]
+        longitude = gps_data["LON"]
+        print(f"Latitude: {latitude:.6f}, Longitude: {longitude:.6f}")
+        time.sleep(1)  # Adjust the sleep time as needed
 
 #email
 def email_sending_thread():
-    global gun_detection_counter
+    global gunknife_detection_counter
     global loud_sound_counter
     global unknown_face_detected
     global unknown_face_image
     while True:
-        if gun_detection_counter == 1 or loud_sound_counter == 1 or unknown_face_detected:
+        if gunknife_detection_counter == 1 or loud_sound_counter == 1 or unknown_face_detected:
             # Record audio
             samples = sd.rec(int(duration * samplerate), device=device, channels=1)
             sd.wait()
@@ -272,18 +282,23 @@ def email_sending_thread():
             # Get the device's public IP address using the socket library
             public_ip = socket.gethostbyname(socket.gethostname())
 
+            # Get GPS data
+            gps_data = gps.poll("NAV", "PVT")
+            latitude = gps_data["LAT"]
+            longitude = gps_data["LON"]
+
             try:
                 # Use geocoder to get latitude and longitude of the IP address
                 g = geocoder.ip(public_ip)
-                latitude = g.latlng[0]
-                longitude = g.latlng[1]
                 # Construct a Google Maps link with the obtained coordinates
                 google_maps_link = f"https://www.google.com/maps/place/{latitude},{longitude}"
                 location_info = f"Location: {google_maps_link}"  # Use the Google Maps link as location
             except Exception as e:
                 location_info = "Location: Unavailable"
+
             text = MIMEText(
-                "Threat detected at " + datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S %p") + "\n" + location_info)
+                "Threat detected at " + datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S %p") + "\n" + location_info
+            )
             msg.attach(text)
 
             # Attach the screenshot
@@ -321,7 +336,6 @@ def email_sending_thread():
         time.sleep(0.1)
 
 
-
 def detect_faces_opencv(camera):
     global frame
     while True:
@@ -340,13 +354,12 @@ def detect_faces_opencv(camera):
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
 # Create threads and start them
-t1 = threading.Thread(target=gun_detection_thread)
+t1 = threading.Thread(target=gunknife_detection_thread)
 t2 = threading.Thread(target=loud_sound_detection_thread)
 t3 = threading.Thread(target=email_sending_thread)
 t4 = threading.Thread(target=face_recognition_thread)
 t5 = threading.Thread(target=alarm_thread)
 t6 = threading.Thread(target=detect_faces_opencv, args=(camera,))
-t7 = threading.Thread(target=sms_alert_thread)
 
 t1.start()
 t2.start()
@@ -354,7 +367,6 @@ t3.start()
 t4.start()
 t5.start()
 t6.start()
-t7.start() 
 
 while True:
     ret, frame = camera.read()
@@ -371,7 +383,7 @@ while True:
     if key == ord('q'):
         break
 
-    if gun_detection_counter > 0 or loud_sound_counter > 0:
+    if gunknife_detection_counter > 0 or loud_sound_counter > 0:
         if not alarm_active:
             alarm_sound.play(-1)
             alarm_active = True
@@ -392,6 +404,8 @@ t3.join()
 t4.join()
 t5.join()
 t6.join()
+t7 = threading.Thread(target=start_gps_thread) 
+t7.start()
 
 camera.release()
 cv2.destroyAllWindows()
