@@ -1,4 +1,4 @@
-# Security System with Threat Detection
+# Security System with Threat Detection (for my Smart security robot)
 
 <p>This Python code implements a security system that combines various threat detection mechanisms including gun and knife detection, loud sound detection, and face recognition. The system captures live camera feed and processes it to detect potential threats. Upon detection, it triggers alerts via email and Telegram, as well as activates an alarm sound.</p>
 
