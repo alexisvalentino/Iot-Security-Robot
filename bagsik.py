@@ -23,9 +23,9 @@ import socket
 import geocoder
 import telegram
 
-FROM_EMAIL = 'f6866666@gmail.com'
-FROM_PASSWORD = 'gwlyhghawjphuwtv'
-TO_EMAIL = 'alexis01valentino@gmail.com'
+FROM_EMAIL = 'insert_your_email'
+FROM_PASSWORD = 'your_password'
+TO_EMAIL = 'recipients_email'
 
 TELEGRAM_BOT_TOKEN = 'YOUR_BOT_TOKEN'
 RECIPIENT_CHAT_ID = 'RECIPIENT_CHAT_ID' 
