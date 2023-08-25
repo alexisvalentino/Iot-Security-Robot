@@ -15,10 +15,15 @@ import cv2
 import numpy as np
 import imutils
 import socket
+import phonenumbers
+from phonenumbers import geocoder, carrier
+import folium
+from mapbox import Geocoder
+from MyNumber import number
 import geocoder
 
 FROM_EMAIL = 'f6866666@gmail.com'
-FROM_PASSWORD = 'wvocnixkyarcxtnc'
+FROM_PASSWORD = 'flcgbrnuuemjnjrv'
 TO_EMAIL = 'alexis01valentino@gmail.com'
 
 face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
@@ -264,6 +269,29 @@ def alarm_thread():
             unknown_face_detected = False
         time.sleep(0.1)
 
+# Geolocation thread
+def geolocation_thread():
+    global city
+    global latitude
+    global longitude
+    while True:
+        # Initialize Mapbox Geocoder with your access token
+        mapbox_access_token = "pk.eyJ1IjoiYmFnc2lrMTAxIiwiYSI6ImNsbHB0bXBlajBjbnIzZ3BzcmM5eWpxY3YifQ.GEXMlYBxXHo-Ss25G4nRXw"
+        geocoder = Geocoder(access_token=mapbox_access_token)
+
+        # Query for the geographical location using the city
+        response = geocoder.forward(city, limit=1)
+
+        # Extract latitude and longitude from the geocode response
+        if response and len(response.json()['features']) > 0:
+            geometry = response.json()['features'][0]['geometry']
+            latitude = geometry['coordinates'][1]
+            longitude = geometry['coordinates'][0]
+        else:
+            print("No valid results found from Mapbox Geocoding API for the city")
+
+        time.sleep(300)  # Update geolocation every 5 minutes
+
 def email_sending_thread():
     global gun_detection_counter
     global loud_sound_counter
@@ -272,14 +300,6 @@ def email_sending_thread():
 
     while True:
         if gun_detection_counter == 1 or loud_sound_counter == 1 or unknown_face_detected:
-            # Record audio
-            samples = sd.rec(int(duration * samplerate), device=device, channels=1)
-            sd.wait()
-
-            screenshot = "screenshot.jpg"
-            cv2.imwrite(screenshot, frame)
-            filename = "recording.wav"
-            sf.write(filename, samples, int(samplerate))
             msg = MIMEMultipart()
             msg['From'] = FROM_EMAIL
             msg['To'] = TO_EMAIL
@@ -300,17 +320,30 @@ def email_sending_thread():
             except Exception as e:
                 location_info = "Location: "
 
-            text = MIMEText(
-                "Threat detected at " + datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S %p") + "\n" + location_info)
+            # Construct the email body
+            email_body = (
+                "Threat detected at " + datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S %p") + "\n" +
+                location_info + "\n\n"
+            )
+
+            text = MIMEText(email_body)
             msg.attach(text)
 
+            # Record audio
+            samples = sd.rec(int(duration * samplerate), device=device, channels=1)
+            sd.wait()
+
             # Attach the screenshot
+            screenshot = "screenshot.jpg"
+            cv2.imwrite(screenshot, frame)
             with open(screenshot, 'rb') as f:
                 img = MIMEImage(f.read())
             img.add_header('Content-Disposition', 'attachment', filename="screenshot.jpg")
             msg.attach(img)
 
             # Attach the audio recording
+            filename = "recording.wav"
+            sf.write(filename, samples, int(samplerate))
             with open(filename, 'rb') as f:
                 audio = MIMEAudio(f.read())
             audio.add_header('Content-Disposition', 'attachment', filename="recording.wav")
@@ -336,7 +369,6 @@ def email_sending_thread():
                 print("Error sending email:", str(e))
 
         time.sleep(0.1)
-
 
 def detect_faces_opencv(camera):
     global frame
@@ -365,6 +397,7 @@ t4 = threading.Thread(target=face_recognition_thread)
 t5 = threading.Thread(target=alarm_thread)
 t6 = threading.Thread(target=detect_faces_opencv, args=(camera,))
 t7 = threading.Thread(target=knife_detection_thread) 
+t8 = threading.Thread(target=geolocation_thread)
 
 t1.start()
 t2.start()
@@ -373,6 +406,7 @@ t4.start()
 t5.start()
 t6.start()
 t7.start()
+t8.start()
 
 
 while True:
@@ -417,6 +451,7 @@ t4.join()
 t5.join()
 t6.join()
 t7.join()
+t8.join()
 
 camera.release()
 cv2.destroyAllWindows()
