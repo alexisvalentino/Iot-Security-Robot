@@ -22,9 +22,9 @@ from mapbox import Geocoder
 from MyNumber import number
 import geocoder
 
-FROM_EMAIL = 'f6866666@gmail.com'
-FROM_PASSWORD = 'flcgbrnuuemjnjrv'
-TO_EMAIL = 'alexis01valentino@gmail.com'
+FROM_EMAIL = 'your-email@gmail.com'
+FROM_PASSWORD = 'your-app-password'
+TO_EMAIL = 'recipient-email@gmail.com'
 
 face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 gun_cascade = cv2.CascadeClassifier('cascade.xml')
@@ -276,7 +276,7 @@ def geolocation_thread():
     global longitude
     while True:
         # Initialize Mapbox Geocoder with your access token
-        mapbox_access_token = "pk.eyJ1IjoiYmFnc2lrMTAxIiwiYSI6ImNsbHB0bXBlajBjbnIzZ3BzcmM5eWpxY3YifQ.GEXMlYBxXHo-Ss25G4nRXw"
+        mapbox_access_token = "YOUR_MAPBOX_ACCESS_TOKEN"
         geocoder = Geocoder(access_token=mapbox_access_token)
 
         # Query for the geographical location using the city

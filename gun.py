@@ -8,9 +8,9 @@ from email.mime.image import MIMEImage
 import datetime
 import pygame
 
-FROM_EMAIL = 'f6866666@gmail.com'
-FROM_PASSWORD = 'callktgjyogxqbwl'
-TO_EMAIL = 'alexis01valentino@gmail.com'
+FROM_EMAIL = 'your-email@gmail.com'
+FROM_PASSWORD = 'your-app-password'
+TO_EMAIL = 'recipient-email@gmail.com'
 
 gun_cascade = cv2.CascadeClassifier('cascade.xml')
 camera = cv2.VideoCapture(0)

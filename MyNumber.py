@@ -1,1 +1,1 @@
-number = "639078510146"
+number = "YOUR_PHONE_NUMBER"

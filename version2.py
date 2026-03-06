@@ -44,7 +44,7 @@ gps = UBlox("/dev/ttyACM0")  # Replace with the actual device path of your GPS m
 gps.configure_solution_rate(rate_ms=1000)  # Update rate of 1 second
 gps.configure_message_rate(class_id=0x01, msg_id=0x02, rate=1)  # GGA message at 1 Hz
 
-OPENCAGE_API_KEY = 'e4d21fe225704779a60d81989b3285b2'
+OPENCAGE_API_KEY = 'YOUR_OPENCAGE_API_KEY'
 firstFrame = None
 gun_exist = False
 alarm_active = False
